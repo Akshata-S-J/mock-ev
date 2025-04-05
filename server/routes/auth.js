@@ -46,7 +46,7 @@ router.post('/signup', async (req, res) => {
         user = new User({ username, email, contactNumber, password: hashedPassword });
         await user.save();
 
-        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '365d' });
         res.json({ token, user });
     } catch (err) {
         res.status(500).json({ message: 'Server Error' });
@@ -69,7 +69,7 @@ router.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ message: 'Invalid Credentials' });
 
-        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: '365d' });
         res.json({ token, user });
     } catch (err) {
         res.status(500).json({ message: 'Server Error' });

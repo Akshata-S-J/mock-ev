@@ -19,7 +19,7 @@ const ResetPassword = () => {
         return;
       }
 
-      const response = await fetch("http://10.1.14.109:5000/api/auth/reset-password", {
+      const response = await fetch("http://10.1.17.148:5000/api/auth/reset-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -27,7 +27,7 @@ const Profile = () => {
 
   const fetchUserDetails = async () => {
     try {
-      const token = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3Y2MxNDRiYWY1YzI5ZjUyMTcyZGY3NiIsImlhdCI6MTc0MTg0MjM1NywiZXhwIjoxNzQxODQ1OTU3fQ.f5Iy31fpB6JkaZAoiTnnIgbb_obLLohJcLCEERzqgj8`;
+      const token = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3Y2MxNDRiYWY1YzI5ZjUyMTcyZGY3NiIsImlhdCI6MTc0MjQ0NjUzOCwiZXhwIjoxNzczOTgyNTM4fQ.MFrsevI_POX8uAny7BWhvA_W5hRVFW51W6FPyp7R_XY`;
       const userId = await AsyncStorage.getItem("userId");
 
       if (!token || !userId) {
@@ -37,7 +37,7 @@ const Profile = () => {
       }
 
       const response = await fetch(
-        `http://10.1.14.109:5000/api/auth/user/${userId}`,
+        `http://10.1.17.148:5000/api/auth/user/${userId}`,
         {
           method: "GET",
           headers: {
