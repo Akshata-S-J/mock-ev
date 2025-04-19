@@ -26,7 +26,7 @@ const MyAccount = () => {
       }
 
       const response = await fetch(
-        `http://10.1.17.148:5001/api/auth/user/${userId}`,
+        `http://10.1.17.148:5000/api/auth/user/${userId}`,
         {
           method: "GET",
           headers: {

@@ -10,6 +10,7 @@ import Home from './src/screens/Home';
 import Profile from './src/screens/Profile';
 import Account from './src/screens/MyAccount';
 import ResetPassword from './src/screens/ResetPassword';
+import BookSlot from './src/screens/BookSlot';
 
 const Stack = createNativeStackNavigator();
 
@@ -26,6 +27,7 @@ export default function App() {
           <Stack.Screen name="home" component={Home} options={{ headerShown: false}}/>
           <Stack.Screen name="Profile" component={Profile} options={{ headerShown: false}}/>
           <Stack.Screen name="Account" component={Account} options={{ headerShown: false}}/>
+          <Stack.Screen name="BookSlot" component={BookSlot} options={{ headerShown: false}}/>
           <Stack.Screen name="ResetPassword" component={ResetPassword} options={{ headerShown: false}}/>
           
         </Stack.Navigator>
