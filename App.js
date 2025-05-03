@@ -12,6 +12,9 @@ import Account from './src/screens/MyAccount';
 import ResetPassword from './src/screens/ResetPassword';
 import BookSlot from './src/screens/BookSlot';
 
+import UPI from './src/screens/UPIPayment';
+
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -29,6 +32,7 @@ export default function App() {
           <Stack.Screen name="Account" component={Account} options={{ headerShown: false}}/>
           <Stack.Screen name="BookSlot" component={BookSlot} options={{ headerShown: false}}/>
           <Stack.Screen name="ResetPassword" component={ResetPassword} options={{ headerShown: false}}/>
+          <Stack.Screen name="UPI" component={UPI} options={{ headerShown: false}}/>
           
         </Stack.Navigator>
       </NavigationContainer>

@@ -32,19 +32,36 @@ const parseTime = (timeStr) => {
 
   const now = new Date();
   const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
-  if (isNaN(date)) throw new Error("Invalid time format");
+
+  if (isNaN(date)) {
+    throw new Error("Invalid time format");
+  }
+
+  // Log for debugging purposes
+  console.log("Parsed Date: ", date);
+
   return date;
 };
+
 
 // ➕ Add a new station
 router.post("/stations", async (req, res) => {
   try {
-    const { name, address, chargingPoints } = req.body;
-    if (!name || !address || !Array.isArray(chargingPoints)) {
-      return res.status(400).json({ message: "Invalid input. Provide name, address, and chargingPoints." });
+    const { name, address, chargingPoints, types, payeeVPA, payeeName } = req.body;
+
+    if (!name || !address || !Array.isArray(chargingPoints) || !Array.isArray(types) || !payeeVPA || !payeeName) {
+      return res.status(400).json({ message: "Invalid input. Provide name, address, chargingPoints, types, payeeVPA, and payeeName." });
     }
 
-    const newStation = new Station({ name, address, chargingPoints });
+    const newStation = new Station({
+      name,
+      address,
+      chargingPoints,
+      types,
+      payeeVPA,
+      payeeName
+    });
+
     await newStation.save();
     res.status(201).json({ message: "Station added successfully!", station: newStation });
   } catch (error) {
@@ -65,58 +82,96 @@ router.get("/stations", async (req, res) => {
 // 📆 Book a slot
 router.post("/stations/:stationId/book", async (req, res) => {
   try {
-    const { pointNumber, startTime, endTime, userId } = req.body;
+    console.log("Incoming booking request:", req.body);
+
+    const { pointNumber, startTime, endTime, userId, typeName } = req.body;
     const stationId = req.params.stationId;
 
-    const start = parseTime(startTime);
-    const end = parseTime(endTime);
+    const start = new Date(startTime);
+    const end = new Date(endTime);
 
     if (start >= end) {
+      console.log("Start time is after end time.");
       return res.status(400).json({ message: "End time must be after start time." });
     }
 
     const station = await Station.findById(stationId);
-    if (!station) return res.status(404).json({ message: "Station not found!" });
+    if (!station) {
+      console.log("Station not found.");
+      return res.status(404).json({ message: "Station not found!" });
+    }
 
     const chargingPoint = station.chargingPoints.find(p => p.pointNumber === pointNumber);
-    if (!chargingPoint) return res.status(404).json({ message: "Charging point not found!" });
+    if (!chargingPoint) {
+      console.log("Charging point not found.");
+      return res.status(404).json({ message: "Charging point not found!" });
+    }
 
     const overlap = chargingPoint.slots.some(slot => {
       return (start < slot.endTime && end > slot.startTime);
     });
 
     if (overlap) {
+      console.log("Overlapping slot found.");
       return res.status(409).json({ message: "Slot not available. Choose another time range." });
     }
+
+    const selectedType = chargingPoint.types.find(t => t.typeName === typeName);
+    if (!selectedType) {
+      console.log("Invalid typeName selected.");
+      return res.status(400).json({ message: "Invalid typeName selected." });
+    }
+
+    console.log("Calculating bill...");
+    const hours = (end - start) / (1000 * 60 * 60);
+    const billAmount = hours * selectedType.pricePerHour;
+
+    console.log("Calculated billAmount:", billAmount);
 
     chargingPoint.slots.push({
       startTime: start,
       endTime: end,
       booked: true,
-      userId
+      userId,
+      typeName,
+      billAmount
     });
 
+    station.markModified('chargingPoints');
     await station.save();
-    res.status(200).json({ message: "Slot booked successfully!" });
+
+    console.log("Station saved successfully!");
+
+    res.status(200).json({
+      message: "Slot booked successfully!",
+      billAmount,
+      typeName
+    });
+
   } catch (error) {
+    console.log("Error occurred:", error.message);
     res.status(500).json({ message: error.message });
   }
 });
+
+
+
+
 
 // 🔓 Release a booked slot
 router.post("/stations/:stationId/release", async (req, res) => {
   try {
     const { pointNumber, startTime, endTime } = req.body;
-    const stationId = req.params.stationId;
+    const { stationId } = req.params;
+
+    const start = new Date(startTime);
+    const end = new Date(endTime);
 
     const station = await Station.findById(stationId);
     if (!station) return res.status(404).json({ message: "Station not found!" });
 
     const point = station.chargingPoints.find(p => p.pointNumber === pointNumber);
     if (!point) return res.status(404).json({ message: "Charging point not found!" });
-
-    const start = new Date(startTime);
-    const end = new Date(endTime);
 
     const slot = point.slots.find(
       s => s.startTime.getTime() === start.getTime() && s.endTime.getTime() === end.getTime() && s.booked
@@ -130,7 +185,7 @@ router.post("/stations/:stationId/release", async (req, res) => {
     slot.userId = null;
 
     await station.save();
-    res.json({ message: "Slot released successfully!" });
+    res.status(200).json({ message: "Slot released successfully!" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

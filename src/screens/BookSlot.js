@@ -13,6 +13,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import TimeSelector from '../common/TimeSelector.js'; // adjust path if needed
+import UPI from './UPIPayment.js'; // your UPI Component
 
 const BookSlot = ({ route }) => {
   const { stationId } = route.params;
@@ -24,11 +25,16 @@ const BookSlot = ({ route }) => {
   const [pointNumber, setPointNumber] = useState(null);
   const [bookedSlots, setBookedSlots] = useState([]);
   const [userId, setUserId] = useState(null);
+  const [typeName, setTypeName] = useState(""); // 🆕 Added for selected type
+  const [availableTypes, setAvailableTypes] = useState([]); // 🆕 Types for selected point
   const [loading, setLoading] = useState(true);
+  const [billAmount, setBillAmount] = useState(null); // 🆕 Store bill amount
+const [bookingSuccess, setBookingSuccess] = useState(false); // 🆕 Store booking status
 
   const fetchUserDetails = async () => {
     try {
-      const token = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3Y2MxNDRiYWY1YzI5ZjUyMTcyZGY3NiIsImlhdCI6MTc0MjQ0NjUzOCwiZXhwIjoxNzczOTgyNTM4fQ.MFrsevI_POX8uAny7BWhvA_W5hRVFW51W6FPyp7R_XY`; // Use your actual token
+      const token = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3Y2MxNDRiYWY1YzI5ZjUyMTcyZGY3NiIsImlhdCI6MTc0MjQ0NjUzOCwiZXhwIjoxNzczOTgyNTM4fQ.MFrsevI_POX8uAny7BWhvA_W5hRVFW51W6FPyp7R_XY`;
+       
       const storedUserId = await AsyncStorage.getItem("userId");
 
       if (!token || !storedUserId) {
@@ -38,7 +44,7 @@ const BookSlot = ({ route }) => {
       }
 
       const response = await fetch(
-        `http://10.1.17.148:5000/api/auth/user/${storedUserId}`,
+        `http://10.1.11.11:5000/api/auth/user/${storedUserId}`,
         {
           method: "GET",
           headers: {
@@ -64,14 +70,18 @@ const BookSlot = ({ route }) => {
 
   const fetchChargingPoints = async () => {
     try {
-      const res = await axios.get(`http://10.1.17.148:5000/api/stations/${stationId}`);
+      const res = await axios.get(`http://10.1.11.11:5000/api/stations/${stationId}`);
       const points = res.data.chargingPoints || [];
-  
+
       setChargingPoints(points);
-  
+
       if (points.length > 0) {
         setPointNumber(points[0].pointNumber);
         setBookedSlots(points[0].slots || []);
+        setAvailableTypes(points[0].types || []); // 🆕 Set available types
+        if (points[0].types.length > 0) {
+          setTypeName(points[0].types[0].typeName); // Default to first type
+        }
       }
     } catch (error) {
       console.error("Error fetching charging points:", error);
@@ -79,11 +89,18 @@ const BookSlot = ({ route }) => {
   };
 
   const onPointChange = (value) => {
-    const num = parseInt(value); // 🔧 Force number
+    const num = parseInt(value);
     setPointNumber(num);
-  
+
     const selectedPoint = chargingPoints.find(p => p.pointNumber === num);
     setBookedSlots(selectedPoint?.slots || []);
+    setAvailableTypes(selectedPoint?.types || []); // 🆕 Update types too
+
+    if (selectedPoint?.types?.length > 0) {
+      setTypeName(selectedPoint.types[0].typeName);
+    } else {
+      setTypeName("");
+    }
   };
 
   const bookSlot = async () => {
@@ -92,18 +109,29 @@ const BookSlot = ({ route }) => {
       return;
     }
 
+    if (!typeName) {
+      Alert.alert("Error", "Please select a type.");
+      return;
+    }
+
     try {
-      const res = await axios.post(`http://10.1.17.148:5000/api/stations/${stationId}/book`, {
+      const res = await axios.post(`http://10.1.11.11:5000/api/stations/${stationId}/book`, {
         pointNumber: parseInt(pointNumber),
         startTime,
         endTime,
-        userId
+        userId,
+        typeName, // 🆕 send typeName properly
       });
-      Alert.alert("Success", res.data.message);
-      
-      // Refetch all slots after booking
+
+      Alert.alert("Success", res.data.message + ` Bill: ₹${res.data.billAmount}`);
+      setBillAmount(res.data.billAmount);
+setBookingSuccess(true);
+
+fetchChargingPoints();
+
       fetchChargingPoints();
     } catch (error) {
+      console.log(error);
       Alert.alert("Error", error.response?.data?.message || "Something went wrong");
     }
   };
@@ -114,8 +142,8 @@ const BookSlot = ({ route }) => {
 
     const startTime = `${startDate.getHours() % 12 || 12}:${startDate.getMinutes().toString().padStart(2, '0')} ${startDate.getHours() >= 12 ? 'PM' : 'AM'}`;
     const endTime = `${endDate.getHours() % 12 || 12}:${endDate.getMinutes().toString().padStart(2, '0')} ${endDate.getHours() >= 12 ? 'PM' : 'AM'}`;
-    
-    return `${startTime}~${endTime}`;
+
+    return `${startTime} ~ ${endTime}`;
   };
 
   const removeSlot = async (slotIndex) => {
@@ -125,18 +153,15 @@ const BookSlot = ({ route }) => {
 
     if (currentTime >= endTime) {
       try {
-        // Make backend API request to remove the slot permanently
-        const response = await axios.post(`http://10.1.17.148:5000/api/stations/${stationId}/removeSlot`, {
+        const response = await axios.post(`http://10.1.11.11:5000/api/stations/${stationId}/removeSlot`, {
           pointNumber: pointNumber,
           startTime: slot.startTime,
           endTime: slot.endTime,
         });
 
         if (response.data.success) {
-          Alert.alert("Success", "Slot has been removed");
-          
-          // Remove from local state
-          setBookedSlots(prevSlots => prevSlots.filter((_, index) => index !== slotIndex));
+          Alert.alert("Success", "Slot removed");
+          setBookedSlots(prev => prev.filter((_, idx) => idx !== slotIndex));
         } else {
           Alert.alert("Error", response.data.message || "Failed to remove slot.");
         }
@@ -176,7 +201,7 @@ const BookSlot = ({ route }) => {
       <Text>Select Charging Point:</Text>
       <Picker
         selectedValue={pointNumber}
-        onValueChange={(value) => onPointChange(value)}
+        onValueChange={onPointChange}
       >
         {chargingPoints.map((point) => (
           <Picker.Item
@@ -187,10 +212,29 @@ const BookSlot = ({ route }) => {
         ))}
       </Picker>
 
+      <Text>Select Charging Type:</Text>
+      <Picker
+        selectedValue={typeName}
+        onValueChange={(value) => setTypeName(value)}
+      >
+        {availableTypes.map((type, idx) => (
+          <Picker.Item
+            key={idx}
+            label={`${type.typeName} (${type.kwh} kWh) - ₹${type.pricePerHour}/hr`}
+            value={type.typeName}
+          />
+        ))}
+      </Picker>
+
       <TimeSelector label="Start Time:" value={startTime} onChange={setStartTime} />
       <TimeSelector label="End Time:" value={endTime} onChange={setEndTime} />
 
       <Button title="Book Slot" onPress={bookSlot} />
+
+      {bookingSuccess && (
+  <UPI amount={billAmount} />
+)}
+
 
       <Text style={styles.subtitle}>Already Booked Slots:</Text>
       {filteredSlots.length === 0 ? (

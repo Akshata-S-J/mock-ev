@@ -11,27 +11,32 @@ const TimeSelector = ({ label, value, onChange }) => {
   const handleChange = (event, selectedDate) => {
     setShow(Platform.OS === 'ios');
     if (selectedDate) {
-      const hours = selectedDate.getHours();
-      const minutes = selectedDate.getMinutes();
-      const isPM = hours >= 12;
-      const formattedHours = ((hours + 11) % 12 + 1).toString().padStart(2, '0');
-      const formattedMinutes = minutes.toString().padStart(2, '0');
-      const formattedTime = `${formattedHours}:${formattedMinutes} ${isPM ? 'PM' : 'AM'}`;
-      onChange(formattedTime);
+      onChange(selectedDate); // Pass real Date object
     }
+  };
+
+  const formatTime = (date) => {
+    if (!date || !(date instanceof Date)) return 'Select Time'; // 💥 important fix
+
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const isPM = hours >= 12;
+    const formattedHours = ((hours + 11) % 12 + 1).toString().padStart(2, '0');
+    const formattedMinutes = minutes.toString().padStart(2, '0');
+    return `${formattedHours}:${formattedMinutes} ${isPM ? 'PM' : 'AM'}`;
   };
 
   return (
     <View style={{ marginVertical: 10 }}>
       <Text style={{ fontWeight: 'bold' }}>{label}</Text>
       <Pressable onPress={showPicker} style={{ padding: 10, backgroundColor: '#ddd', borderRadius: 6 }}>
-        <Text>{value}</Text>
+        <Text>{formatTime(value)}</Text>
       </Pressable>
 
       {show && (
         <DateTimePicker
           mode="time"
-          value={new Date()}
+          value={value instanceof Date ? value : new Date()} // 👈 use correct value
           is24Hour={false}
           display="spinner"
           onChange={handleChange}

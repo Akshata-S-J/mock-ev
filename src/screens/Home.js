@@ -21,7 +21,7 @@ const Home = ({ navigation }) => {
   
   useEffect(() => {
     axios
-      .get('http://10.1.17.148:5000/api/stations')
+      .get('http://10.1.11.11:5000/api/stations')
       .then((response) => {
         const stationsWithImage = response.data.map((station) => ({
           ...station,
